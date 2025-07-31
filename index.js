@@ -1,3 +1,4 @@
+require('dotenv').config(); // ✅ This must come first!
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -34,8 +35,8 @@ app.post('/send-otp', async (req, res) => {
   try {
     await client.messages.create({
       body: `Your MechConnect OTP is ${otp}`,
-      to: `+91${phone}`,    // Assuming you're sending to Indian numbers
-      from: twilioPhone     // ✅ Your verified Twilio number
+      to: `+91${phone}`,  // Assuming you're sending to Indian numbers
+      from: twilioPhone   // ✅ Your verified Twilio number
     });
 
     res.json({ success: true, message: 'OTP sent successfully' });
