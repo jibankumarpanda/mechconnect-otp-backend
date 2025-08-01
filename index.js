@@ -1,4 +1,4 @@
-require('dotenv').config(); // ✅ This must come first!
+require('dotenv').config(); // ✅ Load env first
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -10,33 +10,33 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Twilio credentials (from environment variables)
+// ✅ Twilio Credentials
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-// ✅ Directly use your Twilio number instead of environment variable
-const twilioPhone = '+18573823729';
+const twilioPhone = '+18573823729'; // Your verified Twilio number
 
 const client = new twilio(accountSid, authToken);
 
-// OTP memory store
-let otpStore = {}; // { phone: { otp: 123456, expires: timestamp } }
+// OTP store
+let otpStore = {}; // Format: { phone: { otp, expires } }
 
-// Generate a random 6-digit OTP
+// Generate random 6-digit OTP
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000);
 }
 
-// Send OTP route
+// ✅ Send OTP
 app.post('/send-otp', async (req, res) => {
   const { phone } = req.body;
   const otp = generateOTP();
-  otpStore[phone] = { otp, expires: Date.now() + 5 * 60 * 1000 }; // 5-minute validity
+
+  otpStore[phone] = { otp, expires: Date.now() + 5 * 60 * 1000 }; // 5 min
 
   try {
     await client.messages.create({
       body: `Your MechConnect OTP is ${otp}`,
-      to: `+91${phone}`,  // Assuming you're sending to Indian numbers
-      from: twilioPhone   // ✅ Your verified Twilio number
+      to: `+91${phone}`,
+      from: twilioPhone
     });
 
     res.json({ success: true, message: 'OTP sent successfully' });
@@ -46,7 +46,31 @@ app.post('/send-otp', async (req, res) => {
   }
 });
 
-// Start server
+// ✅ Verify OTP
+app.post('/verify-otp', (req, res) => {
+  const { phone, otp } = req.body;
+  const record = otpStore[phone];
+
+  if (!record) {
+    return res.status(400).json({ verified: false, message: 'No OTP sent to this number.' });
+  }
+
+  const now = Date.now();
+  if (now > record.expires) {
+    delete otpStore[phone];
+    return res.status(400).json({ verified: false, message: 'OTP expired.' });
+  }
+
+  if (record.otp == otp) {
+    delete otpStore[phone];
+    return res.json({ verified: true, message: 'OTP verified successfully' });
+  } else {
+    return res.status(400).json({ verified: false, message: 'Invalid OTP' });
+  }
+});
+
+// ✅ Start server
 app.listen(port, () => {
   console.log(`✅ OTP backend running on port ${port}`);
 });
+
